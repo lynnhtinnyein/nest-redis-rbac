@@ -4,6 +4,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AppController } from "./app.controller.js";
 import { AppService } from "./app.service.js";
 import { UsersModule } from "./users/users.module.js";
+import { AuthModule } from "./auth/auth.module.js";
 
 @Module({
     imports: [
@@ -18,10 +19,12 @@ import { UsersModule } from "./users/users.module.js";
                 password: config.get("DB_PASS"),
                 database: config.get("DB_NAME"),
                 autoLoadEntities: true,
-                synchronize: true
+                synchronize: true,
+                // dropSchema: true // migrate:fresh
             })
         }),
-        UsersModule
+        UsersModule,
+        AuthModule
     ],
     controllers: [AppController],
     providers: [AppService]
