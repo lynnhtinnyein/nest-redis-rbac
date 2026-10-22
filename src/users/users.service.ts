@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { User } from "./users.entity.js";
+import { User } from "./user.entity.js";
 
 @Injectable()
 export class UsersService {
@@ -12,6 +12,10 @@ export class UsersService {
 
     findByEmail(email: string) {
         return this.repo.findOne({ where: { email } });
+    }
+
+    findById(id: number) {
+        return this.repo.findOne({ where: { id } });
     }
 
     create(email: string, password: string) {
