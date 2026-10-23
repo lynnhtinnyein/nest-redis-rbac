@@ -3,17 +3,11 @@ import { AuthService } from "./auth.service.js";
 import { type AuthUser, CurrentUser } from "./current-user.decorator.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { RefreshDto } from "./dto/refresh.dto.js";
-import { RegisterDto } from "./dto/register.dto.js";
 import { JwtAuthGuard } from "./jwt-auth.guard.js";
 
 @Controller("auth")
 export class AuthController {
     constructor(private readonly authService: AuthService) {}
-
-    @Post("register")
-    register(@Body() dto: RegisterDto) {
-        return this.authService.register(dto);
-    }
 
     @Post("login")
     @HttpCode(200)

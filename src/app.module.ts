@@ -5,6 +5,7 @@ import { AppController } from "./app.controller.js";
 import { AppService } from "./app.service.js";
 import { UsersModule } from "./users/users.module.js";
 import { AuthModule } from "./auth/auth.module.js";
+import { PermissionsModule } from "./permissions/permissions.module.js";
 
 @Module({
     imports: [
@@ -19,12 +20,13 @@ import { AuthModule } from "./auth/auth.module.js";
                 password: config.get("DB_PASS"),
                 database: config.get("DB_NAME"),
                 autoLoadEntities: true,
-                synchronize: true,
+                synchronize: true
                 // dropSchema: true // migrate:fresh
             })
         }),
         UsersModule,
-        AuthModule
+        AuthModule,
+        PermissionsModule
     ],
     controllers: [AppController],
     providers: [AppService]
