@@ -1,12 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
-import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { LessThan, Repository } from "typeorm";
 import { UsersService } from "../users/users.service.js";
 import { LoginDto } from "./dto/login.dto.js";
-import { RegisterDto } from "./dto/register.dto.js";
 import { RefreshTokenHash } from "./refresh-token-hash.entity.js";
 import bcrypt from "bcrypt";
 
@@ -20,26 +19,18 @@ export class AuthService {
         private readonly refreshTokenHashes: Repository<RefreshTokenHash>
     ) {}
 
-    async register(dto: RegisterDto) {
-        const existing = await this.usersService.findByEmail(dto.email);
-        if (existing) {
-            throw new ConflictException("Email already registered");
-        }
-
-        const hashed = await bcrypt.hash(dto.password, 10);
-        const user = await this.usersService.create(dto.email, hashed);
-
-        return { id: user.id, email: user.email, createdAt: user.createdAt };
-    }
-
     async login(dto: LoginDto) {
         const user = await this.usersService.findByEmail(dto.email);
         const valid = user && (await bcrypt.compare(dto.password, user.password));
         if (!user || !valid) {
             throw new UnauthorizedException("Invalid credentials");
         }
+        const tokens = await this.issueTokens(user.id, user.email);
 
-        return this.issueTokens(user.id, user.email);
+        return {
+            ...tokens,
+            user
+        };
     }
 
     async refresh(refreshToken: string) {

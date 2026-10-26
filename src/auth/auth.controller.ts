@@ -4,6 +4,7 @@ import { type AuthUser, CurrentUser } from "./current-user.decorator.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { RefreshDto } from "./dto/refresh.dto.js";
 import { JwtAuthGuard } from "./jwt-auth.guard.js";
+import { UserResource } from "../users/user.resource.js";
 
 @Controller("auth")
 export class AuthController {
@@ -11,8 +12,12 @@ export class AuthController {
 
     @Post("login")
     @HttpCode(200)
-    login(@Body() dto: LoginDto) {
-        return this.authService.login(dto);
+    async login(@Body() dto: LoginDto) {
+        const data = await this.authService.login(dto);
+        return {
+            ...data,
+            user: UserResource.make(data.user)
+        };
     }
 
     @Post("refresh")

@@ -1,24 +1,109 @@
-import { Injectable } from "@nestjs/common";
+import {
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    Injectable,
+    UnauthorizedException
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { FindOneOptions, In, Repository } from "typeorm";
+import { buildFindOneOptions } from "../common/relation-options.js";
+import { Permission } from "../permissions/permission.entity.js";
 import { User } from "./user.entity.js";
+import { Role } from "./role.enum.js";
+import bcrypt from "bcrypt";
+import { CreateUserDto } from "./dto/create-user.dto.js";
+
+type FindOptions = { withRelations?: boolean };
 
 @Injectable()
 export class UsersService {
+    private readonly relations: FindOneOptions<User>;
+
     constructor(
-        @InjectRepository(User)
-        private readonly repo: Repository<User>
-    ) {}
-
-    findByEmail(email: string) {
-        return this.repo.findOne({ where: { email } });
+        @InjectRepository(User) private readonly repo: Repository<User>,
+        @InjectRepository(Permission)
+        private readonly permissionRepo: Repository<Permission>
+    ) {
+        this.relations = buildFindOneOptions(this.repo, [
+            "permissions",
+            "toggledBy:id,name",
+            "createdBy:id,name"
+        ]);
     }
 
-    findById(id: number) {
-        return this.repo.findOne({ where: { id } });
+    findByEmail(email: string, { withRelations = false }: FindOptions = {}) {
+        return this.repo.findOne({
+            where: { email },
+            ...(withRelations ? this.relations : {})
+        });
     }
 
-    create(email: string, password: string) {
-        return this.repo.save(this.repo.create({ email, password }));
+    findById(id: number, { withRelations = false }: FindOptions = {}) {
+        return this.repo.findOne({
+            where: { id },
+            ...(withRelations ? this.relations : {})
+        });
+    }
+
+    async createUser(dto: CreateUserDto, creatorId: number) {
+        const creator = await this.findById(creatorId);
+        if (!creator) {
+            throw new UnauthorizedException();
+        }
+
+        const role = dto.role ?? Role.USER;
+        if (!creator.canCreate(role)) {
+            throw new ForbiddenException("you do not have permission to perform this action");
+        }
+
+        if (await this.findByEmail(dto.email)) {
+            throw new ConflictException("email is already registered");
+        }
+
+        const permissions = await this.resolvePermissions(dto.permissionIds ?? [], role);
+
+        return this.repo.save(
+            this.repo.create({
+                name: dto.name,
+                email: dto.email,
+                password: await bcrypt.hash(dto.password, 10),
+                role,
+                createdById: creator.id,
+                permissions
+            })
+        );
+    }
+
+    private async resolvePermissions(ids: number[], role: Role) {
+        if (!ids.length) {
+            return [];
+        }
+
+        const permissions = await this.permissionRepo.find({
+            where: { id: In(ids) },
+            relations: { dependencies: true }
+        });
+        if (permissions.length !== ids.length) {
+            throw new BadRequestException("one or more selected permissions do not exist");
+        }
+
+        const selected = new Set(permissions.map((permission) => permission.id));
+        for (const permission of permissions) {
+            if (permission.accessibleRoles && !permission.accessibleRoles.includes(role)) {
+                throw new BadRequestException(
+                    `permission ${permission.value} is not available for role ${role}`
+                );
+            }
+            for (const dependency of permission.dependencies) {
+                if (!selected.has(dependency.id)) {
+                    throw new BadRequestException(
+                        `permission ${permission.value} requires ${dependency.value}`
+                    );
+                }
+            }
+        }
+
+        return permissions;
     }
 }

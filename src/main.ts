@@ -10,6 +10,7 @@ async function bootstrap() {
     app.useGlobalPipes(
         new ValidationPipe({
             whitelist: true,
+            transform: true,
             exceptionFactory: (errors) =>
                 new BadRequestException(
                     errors.map((error) => {
