@@ -11,11 +11,11 @@ import {
     UpdateDateColumn
 } from "typeorm";
 import { Permission } from "../permissions/permission.entity.js";
-import { Role } from "./role.enum.js";
-import { roleLevel } from "./role-policy.js";
+import { Authorizable } from "./role/authorizable.js";
+import { Role } from "./role/role.enum.js";
 
 @Entity("users")
-export class User {
+export class User extends Authorizable {
     @PrimaryGeneratedColumn()
     id: number;
 
@@ -31,7 +31,6 @@ export class User {
     @Column({ type: "enum", enum: Role, default: Role.USER })
     role: Role;
 
-    // suspend and restore
     @Column({ default: false })
     isSuspended: boolean;
 
@@ -45,7 +44,6 @@ export class User {
     @Column({ type: "datetime", nullable: true })
     toggledAt: Date | null;
 
-    // create
     @Column({ type: "int", nullable: true })
     createdById: number | null;
 
@@ -62,7 +60,6 @@ export class User {
     @UpdateDateColumn()
     updatedAt: Date;
 
-    //relations
     @ManyToMany(() => Permission)
     @JoinTable({
         name: "user_permissions",
@@ -70,31 +67,4 @@ export class User {
         inverseJoinColumn: { name: "permissionId" }
     })
     permissions: Permission[];
-
-    // helper functions
-    canManage(target: Role | User) {
-        const role = typeof target === "string" ? target : target.role;
-        return roleLevel(this.role) > roleLevel(role);
-    }
-
-    canCreate(targetRole: Role) {
-        return this.role === Role.SUPER_ADMIN || this.canManage(targetRole);
-    }
-
-    canView(target: User) {
-        if (this.id === target.id) {
-            return true;
-        }
-        if (target.role === Role.SUPER_ADMIN) {
-            return false;
-        }
-        return this.canManage(target);
-    }
-
-    hasPermission(value: string) {
-        if (this.isSuspended) {
-            return false;
-        }
-        return this.permissions?.some((permission) => permission.value === value) ?? false;
-    }
 }

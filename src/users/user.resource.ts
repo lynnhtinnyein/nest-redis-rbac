@@ -1,4 +1,3 @@
-import { PermissionResource } from "../permissions/permission.resource.js";
 import type { User } from "./user.entity.js";
 
 export class UserResource {
@@ -16,7 +15,7 @@ export class UserResource {
             toggledAt: user.toggledAt,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
-            permissions: user.permissions && PermissionResource.collection(user.permissions),
+            permissions: user.permissions && user.permissions.map((e) => e.value),
             toggledBy: user.toggledBy && UserResource.ref(user.toggledBy),
             createdBy: user.createdBy && UserResource.ref(user.createdBy)
         };

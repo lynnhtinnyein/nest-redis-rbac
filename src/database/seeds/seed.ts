@@ -1,9 +1,9 @@
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { DataSource } from "typeorm";
-import { AppModule } from "../app.module.js";
+import { AppModule } from "../../app.module.js";
 import { seedPermissions } from "./permissions/permissions.seed.js";
-import { seedSuperAdmin } from "./users/users.seed.js";
+import { seedUsers } from "./users/users.seed.js";
 
 async function run() {
     const app = await NestFactory.createApplicationContext(AppModule, {
@@ -11,8 +11,9 @@ async function run() {
     });
 
     try {
-        await seedPermissions(app.get(DataSource));
-        await seedSuperAdmin(app.get(DataSource), app.get(ConfigService));
+        const dataSource = app.get(DataSource);
+        await seedPermissions(dataSource);
+        await seedUsers(dataSource, app.get(ConfigService));
         console.log("Seeding complete");
     } finally {
         await app.close();

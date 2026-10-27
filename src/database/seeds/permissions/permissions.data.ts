@@ -1,5 +1,5 @@
-import type { Permission } from "../../permissions/permission.entity.js";
-import { Role } from "../../users/role.enum.js";
+import type { Permission } from "../../../permissions/permission.entity.js";
+import { Role } from "../../../users/role/role.enum.js";
 
 const ALL = [Role.SUPER_ADMIN, Role.ADMIN, Role.USER];
 const ADMINS = [Role.SUPER_ADMIN, Role.ADMIN];
@@ -143,6 +143,5 @@ export const dependencies: Record<string, string[]> = {
     "payments.process": ["orders.view", "payments.view"],
     "payments.refund": ["payments.view"],
     "reports.view_sales": ["orders.view", "payments.view"],
-    "users.manage": ["users.view"],
-    "users.manage_roles": ["users.view"]
+    "users.manage": ["users.view"]
 };

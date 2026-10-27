@@ -4,6 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { LessThan, Repository } from "typeorm";
+import { User } from "../users/user.entity.js";
 import { UsersService } from "../users/users.service.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { RefreshTokenHash } from "./refresh-token-hash.entity.js";
@@ -20,12 +21,12 @@ export class AuthService {
     ) {}
 
     async login(dto: LoginDto) {
-        const user = await this.usersService.findByEmail(dto.email);
+        const user = await this.usersService.findByEmail(dto.email, { withRelations: true });
         const valid = user && (await bcrypt.compare(dto.password, user.password));
         if (!user || !valid) {
             throw new UnauthorizedException("Invalid credentials");
         }
-        const tokens = await this.issueTokens(user.id, user.email);
+        const tokens = await this.issueTokens(user);
 
         return {
             ...tokens,
@@ -52,12 +53,12 @@ export class AuthService {
             throw new UnauthorizedException("Invalid refresh token");
         }
 
-        const user = await this.usersService.findById(userId);
-        if (!user) {
+        const user = await this.usersService.findById(userId, { withRelations: true });
+        if (!user || user.isSuspended) {
             throw new UnauthorizedException("Invalid refresh token");
         }
 
-        return this.issueTokens(user.id, user.email);
+        return this.issueTokens(user);
     }
 
     async logout(refreshToken: string) {
@@ -68,14 +69,18 @@ export class AuthService {
         await this.refreshTokenHashes.delete({ userId });
     }
 
-    private async issueTokens(id: number, email: string) {
-        const payload = { sub: id, email };
+    private async issueTokens(user: User) {
         const ttl = Number(this.config.get("JWT_REFRESH_EXPIRES_IN"));
 
         const [accessToken, refreshToken] = await Promise.all([
-            this.jwtService.signAsync(payload),
+            this.jwtService.signAsync({
+                sub: user.id,
+                email: user.email,
+                role: user.role,
+                permissions: user.permissions.map((permission) => permission.value)
+            }),
             this.jwtService.signAsync(
-                { ...payload, jti: randomUUID() },
+                { sub: user.id, jti: randomUUID() },
                 {
                     secret: this.config.getOrThrow<string>("JWT_REFRESH_SECRET"),
                     expiresIn: ttl
@@ -83,9 +88,9 @@ export class AuthService {
             )
         ]);
 
-        await this.refreshTokenHashes.delete({ userId: id, expiresAt: LessThan(new Date()) });
+        await this.refreshTokenHashes.delete({ userId: user.id, expiresAt: LessThan(new Date()) });
         await this.refreshTokenHashes.insert({
-            userId: id,
+            userId: user.id,
             tokenHash: this.hash(refreshToken),
             expiresAt: new Date(Date.now() + ttl * 1000)
         });

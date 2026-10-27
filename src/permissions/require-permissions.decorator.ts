@@ -1,6 +1,6 @@
 import { SetMetadata } from "@nestjs/common";
 
-export const PERMISSIONS_KEY = "permissions";
+export const PERMISSIONS_KEY = "PERMISSIONS";
 
 export type PermissionMode = "single" | "some" | "every";
 

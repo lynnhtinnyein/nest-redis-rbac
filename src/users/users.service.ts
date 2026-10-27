@@ -3,6 +3,7 @@ import {
     ConflictException,
     ForbiddenException,
     Injectable,
+    NotFoundException,
     UnauthorizedException
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -10,9 +11,10 @@ import { FindOneOptions, In, Repository } from "typeorm";
 import { buildFindOneOptions } from "../common/relation-options.js";
 import { Permission } from "../permissions/permission.entity.js";
 import { User } from "./user.entity.js";
-import { Role } from "./role.enum.js";
-import bcrypt from "bcrypt";
+import { Role } from "./role/role.enum.js";
 import { CreateUserDto } from "./dto/create-user.dto.js";
+import bcrypt from "bcrypt";
+import { UpdateUserDto } from "./dto/update-user-dto.js";
 
 type FindOptions = { withRelations?: boolean };
 
@@ -39,14 +41,16 @@ export class UsersService {
         });
     }
 
-    findById(id: number, { withRelations = false }: FindOptions = {}) {
-        return this.repo.findOne({
+    async findById(id: number, { withRelations = false }: FindOptions = {}) {
+        const user = await this.repo.findOne({
             where: { id },
             ...(withRelations ? this.relations : {})
         });
+        if (!user) throw new NotFoundException(`User ${id} not found`);
+        return user;
     }
 
-    async createUser(dto: CreateUserDto, creatorId: number) {
+    async create(dto: CreateUserDto, creatorId: number) {
         const creator = await this.findById(creatorId);
         if (!creator) {
             throw new UnauthorizedException();
@@ -73,6 +77,30 @@ export class UsersService {
                 permissions
             })
         );
+    }
+
+    async update(id: number, dto: UpdateUserDto, actorId: number) {
+        const actor = await this.findById(actorId);
+        const user = await this.findById(id);
+
+        if (!actor.canManage(user.role)) {
+            throw new ForbiddenException("you do not have permission to perform this action");
+        }
+
+        const role = dto.role ?? user.role;
+        if (role !== user.role && !actor.canCreate(role)) {
+            throw new ForbiddenException("you do not have permission to perform this action");
+        }
+
+        if (dto.name !== undefined) user.name = dto.name;
+        user.role = role;
+
+        if (dto.permissionIds) {
+            user.permissions = await this.resolvePermissions(dto.permissionIds, role);
+        }
+
+        await this.repo.save(user);
+        return this.findById(id, { withRelations: true });
     }
 
     private async resolvePermissions(ids: number[], role: Role) {

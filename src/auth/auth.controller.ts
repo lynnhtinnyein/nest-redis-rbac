@@ -5,10 +5,15 @@ import { LoginDto } from "./dto/login.dto.js";
 import { RefreshDto } from "./dto/refresh.dto.js";
 import { JwtAuthGuard } from "./jwt-auth.guard.js";
 import { UserResource } from "../users/user.resource.js";
+import { UsersService } from "../users/users.service.js";
+import { ApiBearerAuth } from "@nestjs/swagger";
 
 @Controller("auth")
 export class AuthController {
-    constructor(private readonly authService: AuthService) {}
+    constructor(
+        private readonly authService: AuthService,
+        private readonly usersService: UsersService
+    ) {}
 
     @Post("login")
     @HttpCode(200)
@@ -32,16 +37,19 @@ export class AuthController {
         return this.authService.logout(dto.refreshToken);
     }
 
+    @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @Post("logout-all")
     @HttpCode(204)
-    logoutAll(@CurrentUser() user: AuthUser) {
-        return this.authService.logoutAll(user.id);
+    logoutAll(@CurrentUser() authUser: AuthUser) {
+        return this.authService.logoutAll(authUser.id);
     }
 
+    @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @Get("me")
-    profile(@CurrentUser() user: AuthUser) {
-        return user;
+    async profile(@CurrentUser() authUser: AuthUser) {
+        const user = await this.usersService.findById(authUser.id, { withRelations: true });
+        return UserResource.make(user);
     }
 }

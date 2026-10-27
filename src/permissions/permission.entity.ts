@@ -6,7 +6,7 @@ import {
     ManyToMany,
     PrimaryGeneratedColumn
 } from "typeorm";
-import { Role } from "../users/role.enum.js";
+import { Role } from "../users/role/role.enum.js";
 
 @Entity("permissions")
 export class Permission {

@@ -6,18 +6,14 @@ import {
     UnauthorizedException
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { Role } from "../users/role.enum.js";
-import { UsersService } from "../users/users.service.js";
+import { Role } from "../users/role/role.enum.js";
 import { PERMISSIONS_KEY, type PermissionMetadata } from "./require-permissions.decorator.js";
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
-    constructor(
-        private readonly reflector: Reflector,
-        private readonly usersService: UsersService
-    ) {}
+    constructor(private readonly reflector: Reflector) {}
 
-    async canActivate(context: ExecutionContext) {
+    canActivate(context: ExecutionContext) {
         const required = this.reflector.getAllAndOverride<PermissionMetadata>(PERMISSIONS_KEY, [
             context.getHandler(),
             context.getClass()
@@ -28,20 +24,16 @@ export class PermissionsGuard implements CanActivate {
         }
 
         const { user } = context.switchToHttp().getRequest();
-        const found = await this.usersService.findById(user.id, { withRelations: true });
-        if (!found) {
+
+        if (!user) {
             throw new UnauthorizedException();
         }
 
-        if (found.isSuspended) {
-            throw new ForbiddenException("account is suspended");
-        }
-
-        if (found.role === Role.SUPER_ADMIN) {
+        if (user.role === Role.SUPER_ADMIN) {
             return true;
         }
 
-        const owned = new Set(found.permissions.map((permission) => permission.value));
+        const owned = new Set<string>(user.permissions ?? []);
         const has = (value: string) => owned.has(value);
 
         const allowed =

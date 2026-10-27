@@ -8,6 +8,7 @@ import { AuthService } from "./auth.service.js";
 import { JwtStrategy } from "./jwt.strategy.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { RefreshTokenHash } from "./refresh-token-hash.entity.js";
+import { UsersController } from "../users/users.controller.js";
 
 @Module({
     imports: [
@@ -22,7 +23,7 @@ import { RefreshTokenHash } from "./refresh-token-hash.entity.js";
             })
         })
     ],
-    controllers: [AuthController],
+    controllers: [AuthController, UsersController],
     providers: [AuthService, JwtStrategy]
 })
 export class AuthModule {}
