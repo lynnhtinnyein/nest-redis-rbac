@@ -1,11 +1,12 @@
+import { BaseResource } from "../common/base.resoure.js";
 import type { User } from "./user.entity.js";
 
-export class UserResource {
+export class UserResource extends BaseResource {
     static ref(user: User) {
         return { id: user.id, name: user.name };
     }
 
-    static make(user: User) {
+    static create(user: User) {
         return {
             id: user.id,
             name: user.name,
@@ -19,9 +20,5 @@ export class UserResource {
             toggledBy: user.toggledBy && UserResource.ref(user.toggledBy),
             createdBy: user.createdBy && UserResource.ref(user.createdBy)
         };
-    }
-
-    static collection(users: User[]) {
-        return users.map((user) => UserResource.make(user));
     }
 }

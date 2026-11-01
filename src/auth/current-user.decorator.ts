@@ -5,7 +5,7 @@ import type { Role } from "../users/role/role.enum.js";
 
 export interface AuthUserData {
     id: number;
-    email: string;
+    sid: string;
     role: Role;
     permissions: Permission[];
     isSuspended: boolean;
@@ -13,7 +13,7 @@ export interface AuthUserData {
 
 export class AuthUser extends Authorizable {
     readonly id: number;
-    readonly email: string;
+    readonly sid: string;
     readonly role: Role;
     readonly permissions: Permission[];
     readonly isSuspended: boolean;
@@ -21,7 +21,7 @@ export class AuthUser extends Authorizable {
     constructor(data: AuthUserData) {
         super();
         this.id = data.id;
-        this.email = data.email;
+        this.sid = data.sid;
         this.role = data.role;
         this.permissions = data.permissions;
         this.isSuspended = data.isSuspended;

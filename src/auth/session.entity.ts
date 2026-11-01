@@ -2,20 +2,22 @@ import {
     Column,
     CreateDateColumn,
     Entity,
+    Index,
     JoinColumn,
     ManyToOne,
-    PrimaryGeneratedColumn
+    PrimaryColumn
 } from "typeorm";
 import { User } from "../users/user.entity.js";
 
-@Entity("refresh-token-hashes")
-export class RefreshTokenHash {
-    @PrimaryGeneratedColumn()
-    id: number;
+@Entity("sessions")
+export class Session {
+    @PrimaryColumn({ type: "varchar", length: 36 })
+    id: string;
 
     @Column({ length: 64, unique: true })
-    tokenHash: string;
+    refreshTokenHash: string;
 
+    @Index()
     @Column({ type: "datetime" })
     expiresAt: Date;
 

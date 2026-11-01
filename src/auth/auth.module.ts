@@ -5,16 +5,16 @@ import { PassportModule } from "@nestjs/passport";
 import { UsersModule } from "../users/users.module.js";
 import { AuthController } from "./auth.controller.js";
 import { AuthService } from "./auth.service.js";
-import { JwtStrategy } from "./jwt.strategy.js";
+import { JwtStrategy } from "./jwt/jwt.strategy.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { RefreshTokenHash } from "./refresh-token-hash.entity.js";
+import { Session } from "./session.entity.js";
 import { UsersController } from "../users/users.controller.js";
 
 @Module({
     imports: [
         UsersModule,
         PassportModule,
-        TypeOrmModule.forFeature([RefreshTokenHash]),
+        TypeOrmModule.forFeature([Session]),
         JwtModule.registerAsync({
             inject: [ConfigService],
             useFactory: (config: ConfigService) => ({
@@ -23,7 +23,7 @@ import { UsersController } from "../users/users.controller.js";
             })
         })
     ],
-    controllers: [AuthController, UsersController],
+    controllers: [AuthController, UsersController], //TODO:
     providers: [AuthService, JwtStrategy]
 })
 export class AuthModule {}

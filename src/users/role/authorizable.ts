@@ -26,4 +26,8 @@ export abstract class Authorizable {
         if (this.isSuspended) return false;
         return this.permissions?.some((p) => p.value === value) ?? false;
     }
+
+    getAccessibleRoles(): Role[] {
+        return Object.values(Role).filter((role) => roleLevel(role) <= roleLevel(this.role));
+    }
 }

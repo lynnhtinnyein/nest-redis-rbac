@@ -3,7 +3,7 @@ import { AuthService } from "./auth.service.js";
 import { type AuthUser, CurrentUser } from "./current-user.decorator.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { RefreshDto } from "./dto/refresh.dto.js";
-import { JwtAuthGuard } from "./jwt-auth.guard.js";
+import { JwtAuthGuard } from "./jwt/jwt-auth.guard.js";
 import { UserResource } from "../users/user.resource.js";
 import { UsersService } from "../users/users.service.js";
 import { ApiBearerAuth } from "@nestjs/swagger";
@@ -21,7 +21,7 @@ export class AuthController {
         const data = await this.authService.login(dto);
         return {
             ...data,
-            user: UserResource.make(data.user)
+            user: UserResource.create(data.user)
         };
     }
 
@@ -48,8 +48,8 @@ export class AuthController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @Get("me")
-    async profile(@CurrentUser() authUser: AuthUser) {
-        const user = await this.usersService.findById(authUser.id, { withRelations: true });
-        return UserResource.make(user);
+    async me(@CurrentUser() authUser: AuthUser) {
+        const user = await this.usersService.getById(authUser.id, { withRelations: true });
+        return UserResource.create(user);
     }
 }

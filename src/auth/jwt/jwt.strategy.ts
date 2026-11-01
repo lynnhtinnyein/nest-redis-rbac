@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
-import { AuthUser, AuthUserData } from "./current-user.decorator.js";
+import { AuthUser, AuthUserData } from "../current-user.decorator.js";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -17,7 +17,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     validate(payload: AuthUserData & { sub: number }) {
         return new AuthUser({
             id: payload.sub,
-            email: payload.email,
+            sid: payload.sid,
             role: payload.role,
             permissions: payload.permissions,
             isSuspended: payload.isSuspended
