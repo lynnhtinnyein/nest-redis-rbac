@@ -38,8 +38,8 @@ export class UsersController {
     @Get()
     @RequirePermission("users.view")
     async index(@Query() query: ListUserDto, @CurrentUser() authUser: AuthUser) {
-        const result = await this.usersService.getList(query, authUser);
-        return UserResource.collection(result);
+        const users = await this.usersService.getList(query, authUser);
+        return UserResource.collection(users);
     }
 
     // @Get("trashed")
@@ -51,7 +51,7 @@ export class UsersController {
     @Get(":id")
     @RequirePermission("users.view")
     async show(@Param("id", ParseIntPipe) id: number) {
-        const user = await this.usersService.getById(id, { withRelations: true });
+        const user = await this.usersService.findById(id, { withRelations: true });
         return UserResource.create(user);
     }
 

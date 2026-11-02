@@ -1,8 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsIn, IsOptional, IsString } from "class-validator";
+import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
 import { Role } from "../role/role.enum.js";
-import { Searchable, Sortable } from "../../common/dto/query-decorators.js";
-import { PaginatedListDto } from "../../common/dto/pagination-query.dto.js";
+import { SortablePaginationDto } from "../../common/dto/sortable-pagination.dto.js";
 
 export const USER_SORTABLE = [
     "id",
@@ -18,9 +17,17 @@ export const USER_SORTABLE = [
 const USER_STATUSES = ["ALL", "ACTIVE", "SUSPENDED"] as const;
 const USER_ROLES = ["ALL", ...Object.values(Role)] as const;
 
-@Searchable()
-@Sortable(USER_SORTABLE)
-export class ListUserDto extends PaginatedListDto<(typeof USER_SORTABLE)[number]> {
+export class ListUserDto extends SortablePaginationDto(USER_SORTABLE, {
+    defaultSortBy: "createdAt",
+    defaultSortOrder: "DESC",
+    defaultPerPage: 12
+}) {
+    @ApiPropertyOptional({ type: String, maxLength: 255 })
+    @IsOptional()
+    @IsString()
+    @MaxLength(255)
+    search?: string;
+
     @ApiPropertyOptional({ enum: USER_STATUSES })
     @IsOptional()
     @IsString()

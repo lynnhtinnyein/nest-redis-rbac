@@ -6,18 +6,17 @@ import {
     NotFoundException
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { FindOneOptions, FindOptionsWhere, In, IsNull, Like, Not, Raw, Repository } from "typeorm";
+import { Brackets, FindOneOptions, In, Repository } from "typeorm";
 import { buildFindOneOptions } from "../common/relation-options.js";
 import { Permission } from "../permissions/permission.entity.js";
 import { User } from "./user.entity.js";
 import { Role } from "./role/role.enum.js";
 import { CreateUserDto } from "./dto/create-user.dto.js";
-import bcrypt from "bcrypt";
 import { UpdateUserDto } from "./dto/update-user-dto.js";
 import { ListUserDto } from "./dto/index-user.dto.js";
-import { SelectQueryBuilder } from "typeorm/browser";
 import { AuthUser } from "../auth/current-user.decorator.js";
-import { paginate } from "nestjs-typeorm-paginate";
+import { emptyPage, paginate } from "../common/orm/paginate.js";
+import bcrypt from "bcrypt";
 
 type FindOptions = { withRelations?: boolean };
 
@@ -31,13 +30,13 @@ export class UsersService {
         private readonly permissionRepo: Repository<Permission>
     ) {
         this.relations = buildFindOneOptions(this.repo, [
-            "permissions",
+            "permissions:value",
             "toggledBy:id,name",
             "createdBy:id,name"
         ]);
     }
 
-    async getByEmail(email: string, { withRelations = false }: FindOptions = {}) {
+    async findByEmail(email: string, { withRelations = false }: FindOptions = {}) {
         const user = await this.repo.findOne({
             where: { email },
             ...(withRelations ? this.relations : {})
@@ -46,7 +45,7 @@ export class UsersService {
         return user;
     }
 
-    async getById(id: number, { withRelations = false }: FindOptions = {}) {
+    async findById(id: number, { withRelations = false }: FindOptions = {}) {
         const user = await this.repo.findOne({
             where: { id },
             ...(withRelations ? this.relations : {})
@@ -55,87 +54,72 @@ export class UsersService {
         return user;
     }
 
-    parsePayload(
-        dto: ListUserDto,
-        config: {
-            defaultPerPage?: number;
-            defaultSortBy?: string;
-            defaultSortOrder?: "ASC" | "DESC";
-        } = {}
-    ) {
-        const { defaultPerPage = 10, defaultSortBy = "id", defaultSortOrder = "DESC" } = config;
-
-        const sortKeyMap: Record<string, string> = {
-            status: "isSuspended",
-            permissions: "permissionsCount"
-        };
-
-        const sortBy = dto.sortBy ?? defaultSortBy;
-
-        return {
-            filters: {
-                search: dto.search ?? null,
-                status: dto.status ?? "ALL",
-                role: dto.role ?? "ALL"
-            },
-            sorting: { [sortKeyMap[sortBy] ?? sortBy]: dto.sortOrder ?? defaultSortOrder },
-            pagination: {
-                page: dto.page ?? 1,
-                limit: dto.perPage ?? defaultPerPage
-            }
-        };
-    }
-
     async getList(dto: ListUserDto, authUser: AuthUser) {
-        const { filters, sorting, pagination } = this.parsePayload(dto, {
-            defaultPerPage: 15,
-            defaultSortBy: "createdAt"
-        });
+        const pagination = { page: dto.page, perPage: dto.perPage };
+        const sortBy = dto.sortBy === "status" ? "isSuspended" : dto.sortBy;
 
         const accessibleRoles = authUser.getAccessibleRoles();
-        const requestedRole = filters.role as Role;
-        const hasRoleFilter = !!filters.role && filters.role !== "ALL";
-
-        const query: FindOptionsWhere<User> = { id: Not(authUser.id) };
+        const requestedRole = dto.role as Role;
+        const hasRoleFilter = !!dto.role && dto.role !== "ALL";
 
         if (hasRoleFilter && !accessibleRoles.includes(requestedRole)) {
-            query.id = Raw(() => "1 = 0");
+            return emptyPage<User>(pagination);
+        }
+
+        const qb = this.repo
+            .createQueryBuilder("user")
+            .where("user.id != :authId", { authId: authUser.id })
+            .andWhere("user.role IN (:...roles)", {
+                roles: hasRoleFilter ? [requestedRole] : accessibleRoles
+            });
+
+        if (dto.status !== "ALL") {
+            qb.andWhere("user.isSuspended = :suspended", {
+                suspended: dto.status === "SUSPENDED"
+            });
+        }
+
+        if (dto.search) {
+            qb.andWhere(
+                new Brackets((b) => {
+                    b.where("user.name LIKE :search").orWhere("user.email LIKE :search");
+                }),
+                { search: `%${dto.search}%` }
+            );
+        }
+
+        if (sortBy === "permissions") {
+            qb.addSelect(
+                (sq) =>
+                    sq
+                        .select("COUNT(*)")
+                        .from("user_permissions", "up")
+                        .where("up.userId = user.id"),
+                "permissionsCount"
+            ).orderBy("permissionsCount", dto.sortOrder);
         } else {
-            query.role = In(hasRoleFilter ? [requestedRole] : accessibleRoles);
+            qb.orderBy(`user.${dto.sortBy}`, dto.sortOrder);
         }
 
-        // if (filters.onlyTrashed) {
-        //     query.deletedAt = Not(IsNull());
-        // }
+        qb.addOrderBy("user.id", "ASC");
 
-        if (filters.status !== "ALL") {
-            query.isSuspended = filters.status === "SUSPENDED";
-        }
-
-        const where: FindOptionsWhere<User>[] = filters.search
-            ? [
-                  { ...query, name: Like(`%${filters.search}%`) },
-                  { ...query, email: Like(`%${filters.search}%`) }
-              ]
-            : [query];
-
-        return paginate<User>(this.repo, pagination, {
-            where,
-            // withDeleted: !!filters.onlyTrashed,
-            relations: { permissions: true, toggledBy: true, createdBy: true },
-            order: sorting
+        return paginate({
+            repo: this.repo,
+            qb,
+            relations: this.relations,
+            pagination
         });
     }
 
     async create(dto: CreateUserDto, creatorId: number) {
-        const creator = await this.getById(creatorId);
+        const creator = await this.findById(creatorId);
 
         const role = dto.role ?? Role.USER;
         if (!creator.canCreate(role)) {
             throw new ForbiddenException("you do not have permission to perform this action");
         }
 
-        if (await this.getByEmail(dto.email)) {
+        if (await this.repo.findOne({ where: { email: dto.email } })) {
             throw new ConflictException("email is already registered");
         }
 
@@ -152,12 +136,12 @@ export class UsersService {
             })
         );
 
-        return this.getById(user.id, { withRelations: true });
+        return this.findById(user.id, { withRelations: true });
     }
 
     async update(id: number, dto: UpdateUserDto, actorId: number) {
-        const actor = await this.getById(actorId);
-        const user = await this.getById(id);
+        const actor = await this.findById(actorId);
+        const user = await this.findById(id);
 
         if (!actor.canManage(user.role)) {
             throw new ForbiddenException("you do not have permission to perform this action");
@@ -176,11 +160,11 @@ export class UsersService {
         }
 
         await this.repo.save(user);
-        return this.getById(id, { withRelations: true });
+        return this.findById(id, { withRelations: true });
     }
 
     async updatePassword(id: number, newPassword: string) {
-        const user = await this.getById(id);
+        const user = await this.findById(id);
         user.password = await bcrypt.hash(newPassword, 10);
         await this.repo.save(user);
     }

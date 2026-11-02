@@ -68,9 +68,4 @@ export class User extends Authorizable {
         inverseJoinColumn: { name: "permissionId" }
     })
     permissions: Permission[];
-
-    @VirtualColumn({
-        query: (alias) => `SELECT COUNT(*) FROM user_permissions WHERE user_id = ${alias}.id`
-    })
-    permissionsCount: number;
 }

@@ -49,7 +49,7 @@ export class AuthController {
     @UseGuards(JwtAuthGuard)
     @Get("me")
     async me(@CurrentUser() authUser: AuthUser) {
-        const user = await this.usersService.getById(authUser.id, { withRelations: true });
+        const user = await this.usersService.findById(authUser.id, { withRelations: true });
         return UserResource.create(user);
     }
 }

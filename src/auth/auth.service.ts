@@ -21,7 +21,7 @@ export class AuthService {
     ) {}
 
     async login(dto: LoginDto) {
-        const user = await this.usersService.getByEmail(dto.email, { withRelations: true });
+        const user = await this.usersService.findByEmail(dto.email, { withRelations: true });
         const valid = user && (await bcrypt.compare(dto.password, user.password));
         if (!user || !valid) {
             throw new UnauthorizedException("Invalid credentials");
@@ -51,8 +51,8 @@ export class AuthService {
             throw new UnauthorizedException("Invalid refresh token");
         }
 
-        const user = await this.usersService.getById(userId, { withRelations: true });
-        if (!user || user.isSuspended) {
+        const user = await this.usersService.findById(userId, { withRelations: true });
+        if (user.isSuspended) {
             throw new UnauthorizedException("Invalid refresh token");
         }
 
