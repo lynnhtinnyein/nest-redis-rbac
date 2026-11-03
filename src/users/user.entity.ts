@@ -38,9 +38,12 @@ export class User extends Authorizable {
     @Column({ type: "int", nullable: true })
     toggledById: number | null;
 
-    @ManyToOne(() => User, { nullable: true })
+    @ManyToOne(() => User, (user) => user.toggledUsers, { nullable: true })
     @JoinColumn({ name: "toggledById" })
     toggledBy: User | null;
+
+    @OneToMany(() => User, (user) => user.toggledBy)
+    toggledUsers: User[];
 
     @Column({ type: "datetime", nullable: true })
     toggledAt: Date | null;
@@ -48,12 +51,12 @@ export class User extends Authorizable {
     @Column({ type: "int", nullable: true })
     createdById: number | null;
 
-    @ManyToOne(() => User, (user) => user.createdAccounts, { nullable: true })
+    @ManyToOne(() => User, (user) => user.createdUsers, { nullable: true })
     @JoinColumn({ name: "createdById" })
     createdBy: User | null;
 
     @OneToMany(() => User, (user) => user.createdBy)
-    createdAccounts: User[];
+    createdUsers: User[];
 
     @CreateDateColumn()
     createdAt: Date;

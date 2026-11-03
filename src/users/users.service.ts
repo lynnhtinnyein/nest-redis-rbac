@@ -6,7 +6,7 @@ import {
     NotFoundException
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Brackets, FindOneOptions, In, Repository } from "typeorm";
+import { Brackets, EntityManager, FindOneOptions, In, Repository } from "typeorm";
 import { buildFindOneOptions } from "../common/relation-options.js";
 import { Permission } from "../permissions/permission.entity.js";
 import { User } from "./user.entity.js";
@@ -16,8 +16,8 @@ import { UpdateUserDto } from "./dto/update-user-dto.js";
 import { ListUserDto } from "./dto/index-user.dto.js";
 import { AuthUser } from "../auth/current-user.decorator.js";
 import { emptyPage, paginate } from "../common/orm/paginate.js";
+import { safeDelete } from "../common/utils/safe-delete.js";
 import bcrypt from "bcrypt";
-import { deleteOrArchive } from "../common/utils/safe-delete.js";
 
 type FindOptions = { withRelations?: boolean; withTrash?: boolean };
 
@@ -37,25 +37,28 @@ export class UsersService {
         ]);
     }
 
-    async findByEmail(email: string, { withRelations = false }: FindOptions = {}) {
-        const user = await this.repo.findOne({
+    findByEmail(
+        email: string,
+        { withRelations = false, withTrash = false }: FindOptions = {},
+        repo: EntityManager = this.repo.manager
+    ) {
+        return repo.findOne(User, {
             where: { email },
+            withDeleted: withTrash,
             ...(withRelations ? this.relations : {})
         });
-        if (!user) throw new NotFoundException(`User ${email} not found`);
-        return user;
     }
 
-    async findById(id: number, { withRelations = false, withTrash = false }: FindOptions = {}) {
-        const user = await this.repo.findOne({
+    findById(
+        id: number,
+        { withRelations = false, withTrash = false }: FindOptions = {},
+        repo: EntityManager = this.repo.manager
+    ) {
+        return repo.findOne(User, {
             where: { id },
             withDeleted: withTrash,
             ...(withRelations ? this.relations : {})
         });
-
-        if (!user) throw new NotFoundException(`User ${id} not found`);
-
-        return user;
     }
 
     async getList(
@@ -134,23 +137,35 @@ export class UsersService {
         }
 
         const permissions = await this.resolvePermissions(dto.permissionIds ?? [], role);
+        const password = await bcrypt.hash(dto.password, 10);
 
-        const user = await this.repo.save(
-            this.repo.create({
-                name: dto.name,
-                email: dto.email,
-                password: await bcrypt.hash(dto.password, 10),
-                role,
-                createdById: authUser.id,
-                permissions
-            })
-        );
+        try {
+            return await this.repo.manager.transaction(async (repo) => {
+                const user = await repo.save(
+                    repo.create(User, {
+                        name: dto.name,
+                        email: dto.email,
+                        password,
+                        role,
+                        createdById: authUser.id,
+                        permissions
+                    })
+                );
 
-        return this.findById(user.id, { withRelations: true });
+                return this.findById(user.id, { withRelations: true }, repo);
+            });
+        } catch (error) {
+            if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
+                throw new ConflictException("email is already registered");
+            }
+            throw error;
+        }
     }
 
     async update(id: number, dto: UpdateUserDto, authUser: AuthUser) {
         const user = await this.findById(id);
+
+        if (!user) throw new NotFoundException("User not found");
 
         if (!authUser.canManage(user.role)) {
             throw new ForbiddenException("you do not have permission to perform this action");
@@ -168,26 +183,30 @@ export class UsersService {
             user.permissions = await this.resolvePermissions(dto.permissionIds, role);
         }
 
-        await this.repo.save(user);
-        return this.findById(id, { withRelations: true });
+        return this.repo.manager.transaction(async (repo) => {
+            await repo.save(user);
+            return this.findById(id, { withRelations: true }, repo);
+        });
     }
 
     async updatePassword(id: number, newPassword: string) {
         const user = await this.findById(id);
+        if (!user) throw new NotFoundException("User not found");
         user.password = await bcrypt.hash(newPassword, 10);
         await this.repo.save(user);
     }
 
-    async deleteOrArchive(id: number, authUser: AuthUser) {
+    async safeDelete(id: number, authUser: AuthUser) {
         const user = await this.findById(id, { withTrash: true });
         const isOwnAccount = authUser.id === id;
+
+        if (!user) throw new NotFoundException("User not found");
 
         if (!isOwnAccount && !authUser.canManage(user.role)) {
             throw new ForbiddenException("you do not have permission to perform this action");
         }
 
-        const dependentRelations = ["createdAccounts"]; //TODO: add dependencies
-        return deleteOrArchive(this.repo, id, dependentRelations);
+        return safeDelete(this.repo, id);
     }
 
     private async resolvePermissions(ids: number[], role: Role) {

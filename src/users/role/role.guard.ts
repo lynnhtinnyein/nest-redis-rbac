@@ -3,6 +3,7 @@ import {
     type ExecutionContext,
     ForbiddenException,
     Injectable,
+    NotFoundException,
     UnauthorizedException
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
@@ -37,7 +38,9 @@ export class RoleGuard implements CanActivate {
             return true;
         }
 
-        const target = await this.usersService.findById(targetId);
+        const target = await this.usersService.findById(targetId, { withTrash: true });
+
+        if (!target) throw new NotFoundException("User not found");
 
         if (!authUser.canAccess(target)) {
             throw new ForbiddenException("You cannot access this account.");

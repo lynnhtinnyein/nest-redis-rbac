@@ -3,7 +3,7 @@ import {
     Controller,
     Delete,
     Get,
-    HttpCode,
+    NotFoundException,
     Param,
     ParseIntPipe,
     Patch,
@@ -54,6 +54,7 @@ export class UsersController {
     @RequirePermission("users.view")
     async show(@Param("id", ParseIntPipe) id: number) {
         const user = await this.usersService.findById(id, { withRelations: true });
+        if (!user) throw new NotFoundException("User not found");
         return UserResource.create(user);
     }
 
@@ -63,6 +64,7 @@ export class UsersController {
     @ApiOperation({ summary: "Create user" })
     async store(@Body() dto: CreateUserDto, @CurrentUser() authUser: AuthUser) {
         const user = await this.usersService.create(dto, authUser);
+        if (!user) throw new NotFoundException("Failed to create user");
         return UserResource.create(user);
     }
 
@@ -74,28 +76,35 @@ export class UsersController {
         @CurrentUser() authUser: AuthUser
     ) {
         const user = await this.usersService.update(id, dto, authUser);
+        if (!user) throw new NotFoundException("Failed to update user.");
         return UserResource.create(user);
     }
 
     @Patch(":id/update-password")
     @RequirePermission("users.manage")
-    @HttpCode(204)
     async updatePassword(
         @Param("id", ParseIntPipe) id: number,
         @Body() dto: UpdatePasswordDto,
         @CurrentUser() authUser: AuthUser
     ) {
         await this.usersService.updatePassword(id, dto.password);
-        await this.authService.logoutAll(authUser.id, authUser.sid);
-        return { message: "Password has been updated." };
+
+        if (dto.logoutAllDevices) {
+            await this.authService.logoutAll(id, id === authUser.id ? authUser.sid : undefined);
+        }
+
+        return {
+            message: dto.logoutAllDevices
+                ? "Password updated successfully. You have been logged out of all devices."
+                : "Password updated successfully."
+        };
     }
 
     @Delete(":id")
     @RequirePermission("users.manage")
-    @HttpCode(204)
     async destroy(@Param("id", ParseIntPipe) id: number, @CurrentUser() authUser: AuthUser) {
-        await this.usersService.deleteOrArchive(id, authUser);
-        return { message: "Account has been deleted." };
+        await this.usersService.safeDelete(id, authUser);
+        return { message: "User deleted successfully" };
     }
 
     // @Patch(":id/restore-from-trash")

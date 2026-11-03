@@ -1,4 +1,12 @@
-import { Body, Controller, Get, HttpCode, Post, UseGuards } from "@nestjs/common";
+import {
+    Body,
+    Controller,
+    Get,
+    HttpCode,
+    NotFoundException,
+    Post,
+    UseGuards
+} from "@nestjs/common";
 import { AuthService } from "./auth.service.js";
 import { type AuthUser, CurrentUser } from "./current-user.decorator.js";
 import { LoginDto } from "./dto/login.dto.js";
@@ -50,6 +58,7 @@ export class AuthController {
     @Get("me")
     async me(@CurrentUser() authUser: AuthUser) {
         const user = await this.usersService.findById(authUser.id, { withRelations: true });
+        if (!user) throw new NotFoundException("User not found");
         return UserResource.create(user);
     }
 }

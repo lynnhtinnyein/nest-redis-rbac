@@ -1,6 +1,6 @@
-import { IsNotEmpty, IsString, MinLength } from "class-validator";
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, MinLength } from "class-validator";
 import { Match } from "../../common/match.decorator.js";
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class UpdatePasswordDto {
     @ApiProperty({ example: "password123", minLength: 8 })
@@ -13,4 +13,13 @@ export class UpdatePasswordDto {
     @IsNotEmpty({ message: "confirm password is required" })
     @Match("password", { message: "password and confirmation do not match" })
     confirmPassword: string;
+
+    @ApiPropertyOptional({
+        example: true,
+        default: false,
+        description: "Revoke all sessions on other devices"
+    })
+    @IsOptional()
+    @IsBoolean({ message: "invalid logoutAllDevices" })
+    logoutAllDevices?: boolean;
 }

@@ -52,7 +52,7 @@ export class AuthService {
         }
 
         const user = await this.usersService.findById(userId, { withRelations: true });
-        if (user.isSuspended) {
+        if (!user || user.isSuspended) {
             throw new UnauthorizedException("Invalid refresh token");
         }
 
