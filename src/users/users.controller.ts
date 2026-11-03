@@ -1,6 +1,7 @@
 import {
     Body,
     Controller,
+    Delete,
     Get,
     HttpCode,
     Param,
@@ -42,11 +43,12 @@ export class UsersController {
         return UserResource.collection(users);
     }
 
-    // @Get("trashed")
-    // @RequirePermission("users.view")
-    // trashed(@Query() query: ListUsersQueryDto, @CurrentUser() authUser: AuthUser) {
-    //     return this.usersService.trashed(query, authUser.id);
-    // }
+    @Get("trashed")
+    @RequirePermission("users.view")
+    async trashed(@Query() query: ListUserDto, @CurrentUser() authUser: AuthUser) {
+        const users = await this.usersService.getList(query, authUser, { onlyTrashed: true });
+        return UserResource.collection(users);
+    }
 
     @Get(":id")
     @RequirePermission("users.view")
@@ -60,7 +62,7 @@ export class UsersController {
     @RequirePermission("users.manage")
     @ApiOperation({ summary: "Create user" })
     async store(@Body() dto: CreateUserDto, @CurrentUser() authUser: AuthUser) {
-        const user = await this.usersService.create(dto, authUser.id);
+        const user = await this.usersService.create(dto, authUser);
         return UserResource.create(user);
     }
 
@@ -71,7 +73,7 @@ export class UsersController {
         @Body() dto: UpdateUserDto,
         @CurrentUser() authUser: AuthUser
     ) {
-        const user = await this.usersService.update(id, dto, authUser.id);
+        const user = await this.usersService.update(id, dto, authUser);
         return UserResource.create(user);
     }
 
@@ -85,13 +87,16 @@ export class UsersController {
     ) {
         await this.usersService.updatePassword(id, dto.password);
         await this.authService.logoutAll(authUser.id, authUser.sid);
+        return { message: "Password has been updated." };
     }
 
-    // @Delete(":id")
-    // @RequirePermission("users.manage")
-    // destroy(@Param("id") id: string, @CurrentUser() authUser: AuthUser) {
-    //     return this.usersService.remove(id, user.id);
-    // }
+    @Delete(":id")
+    @RequirePermission("users.manage")
+    @HttpCode(204)
+    async destroy(@Param("id", ParseIntPipe) id: number, @CurrentUser() authUser: AuthUser) {
+        await this.usersService.deleteOrArchive(id, authUser);
+        return { message: "Account has been deleted." };
+    }
 
     // @Patch(":id/restore-from-trash")
     // @RequirePermission("users.manage")

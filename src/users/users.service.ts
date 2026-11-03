@@ -17,8 +17,9 @@ import { ListUserDto } from "./dto/index-user.dto.js";
 import { AuthUser } from "../auth/current-user.decorator.js";
 import { emptyPage, paginate } from "../common/orm/paginate.js";
 import bcrypt from "bcrypt";
+import { deleteOrArchive } from "../common/utils/safe-delete.js";
 
-type FindOptions = { withRelations?: boolean };
+type FindOptions = { withRelations?: boolean; withTrash?: boolean };
 
 @Injectable()
 export class UsersService {
@@ -45,16 +46,23 @@ export class UsersService {
         return user;
     }
 
-    async findById(id: number, { withRelations = false }: FindOptions = {}) {
+    async findById(id: number, { withRelations = false, withTrash = false }: FindOptions = {}) {
         const user = await this.repo.findOne({
             where: { id },
+            withDeleted: withTrash,
             ...(withRelations ? this.relations : {})
         });
+
         if (!user) throw new NotFoundException(`User ${id} not found`);
+
         return user;
     }
 
-    async getList(dto: ListUserDto, authUser: AuthUser) {
+    async getList(
+        dto: ListUserDto,
+        authUser: AuthUser,
+        { onlyTrashed = false }: { onlyTrashed?: boolean } = {}
+    ) {
         const pagination = { page: dto.page, perPage: dto.perPage };
         const sortBy = dto.sortBy === "status" ? "isSuspended" : dto.sortBy;
 
@@ -72,6 +80,10 @@ export class UsersService {
             .andWhere("user.role IN (:...roles)", {
                 roles: hasRoleFilter ? [requestedRole] : accessibleRoles
             });
+
+        if (onlyTrashed) {
+            qb.withDeleted().andWhere("user.deletedAt IS NOT NULL");
+        }
 
         if (dto.status !== "ALL") {
             qb.andWhere("user.isSuspended = :suspended", {
@@ -111,11 +123,9 @@ export class UsersService {
         });
     }
 
-    async create(dto: CreateUserDto, creatorId: number) {
-        const creator = await this.findById(creatorId);
-
+    async create(dto: CreateUserDto, authUser: AuthUser) {
         const role = dto.role ?? Role.USER;
-        if (!creator.canCreate(role)) {
+        if (!authUser.canCreate(role)) {
             throw new ForbiddenException("you do not have permission to perform this action");
         }
 
@@ -131,7 +141,7 @@ export class UsersService {
                 email: dto.email,
                 password: await bcrypt.hash(dto.password, 10),
                 role,
-                createdById: creator.id,
+                createdById: authUser.id,
                 permissions
             })
         );
@@ -139,16 +149,15 @@ export class UsersService {
         return this.findById(user.id, { withRelations: true });
     }
 
-    async update(id: number, dto: UpdateUserDto, actorId: number) {
-        const actor = await this.findById(actorId);
+    async update(id: number, dto: UpdateUserDto, authUser: AuthUser) {
         const user = await this.findById(id);
 
-        if (!actor.canManage(user.role)) {
+        if (!authUser.canManage(user.role)) {
             throw new ForbiddenException("you do not have permission to perform this action");
         }
 
         const role = dto.role ?? user.role;
-        if (role !== user.role && !actor.canCreate(role)) {
+        if (role !== user.role && !authUser.canCreate(role)) {
             throw new ForbiddenException("you do not have permission to perform this action");
         }
 
@@ -169,23 +178,17 @@ export class UsersService {
         await this.repo.save(user);
     }
 
-    // private async buildIndexQueryParams(Request $request, bool $only_trashed)
-    // {
-    //     return [
-    //         'filters': [
-    //             'search' => $request->get('search'),
-    //             'status' => $request->get('status', 'ALL'),
-    //             'role' => $request->get('role', 'ALL'),
-    //             'onlyTrashed' => $only_trashed
-    //         ],
-    //         'sorting' => [
-    //             'sortBy' => $request->get('sortBy', 'created_at'),
-    //             'sortOrder' => strtoupper($request->get('sortOrder', 'DESC'))
-    //         ],
-    //         'authUser' => $request->user(),
-    //         'perPage' => (int) $request->get('perPage', 15)
-    //     ];
-    // }
+    async deleteOrArchive(id: number, authUser: AuthUser) {
+        const user = await this.findById(id, { withTrash: true });
+        const isOwnAccount = authUser.id === id;
+
+        if (!isOwnAccount && !authUser.canManage(user.role)) {
+            throw new ForbiddenException("you do not have permission to perform this action");
+        }
+
+        const dependentRelations = ["createdAccounts"]; //TODO: add dependencies
+        return deleteOrArchive(this.repo, id, dependentRelations);
+    }
 
     private async resolvePermissions(ids: number[], role: Role) {
         if (!ids.length) {

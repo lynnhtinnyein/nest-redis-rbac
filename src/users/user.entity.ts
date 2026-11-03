@@ -1,6 +1,7 @@
 import {
     Column,
     CreateDateColumn,
+    DeleteDateColumn,
     Entity,
     JoinColumn,
     JoinTable,
@@ -8,8 +9,7 @@ import {
     ManyToOne,
     OneToMany,
     PrimaryGeneratedColumn,
-    UpdateDateColumn,
-    VirtualColumn
+    UpdateDateColumn
 } from "typeorm";
 import { Permission } from "../permissions/permission.entity.js";
 import { Authorizable } from "./role/authorizable.js";
@@ -60,6 +60,9 @@ export class User extends Authorizable {
 
     @UpdateDateColumn()
     updatedAt: Date;
+
+    @DeleteDateColumn()
+    deletedAt: Date | null;
 
     @ManyToMany(() => Permission)
     @JoinTable({
