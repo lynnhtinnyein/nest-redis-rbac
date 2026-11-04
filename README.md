@@ -1,4 +1,4 @@
-# nest-auth
+# nestjs-redis-rbac
  
 Auth and user management API.
  
