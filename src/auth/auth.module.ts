@@ -9,6 +9,7 @@ import { JwtStrategy } from "./jwt/jwt.strategy.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Session } from "./session.entity.js";
 import { UsersController } from "../users/users.controller.js";
+import { TokenBlacklistService } from "./token-blacklist.service.js";
 
 @Module({
     imports: [
@@ -24,6 +25,6 @@ import { UsersController } from "../users/users.controller.js";
         })
     ],
     controllers: [AuthController, UsersController], //TODO:
-    providers: [AuthService, JwtStrategy]
+    providers: [AuthService, JwtStrategy, TokenBlacklistService]
 })
 export class AuthModule {}

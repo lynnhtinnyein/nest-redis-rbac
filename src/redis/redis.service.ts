@@ -31,6 +31,10 @@ export class RedisService implements OnModuleDestroy {
         await this.client.del(key);
     }
 
+    async exists(key: string): Promise<boolean> {
+        return (await this.client.exists(key)) === 1;
+    }
+
     async incrWithTtl(key: string, ttlSeconds: number): Promise<number> {
         const count = await this.client.incr(key);
         if (count === 1) {

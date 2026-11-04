@@ -8,6 +8,7 @@ import { User } from "../users/user.entity.js";
 import { UsersService } from "../users/users.service.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { Session } from "./session.entity.js";
+import { TokenBlacklistService } from "./token-blacklist.service.js";
 import bcrypt from "bcrypt";
 
 @Injectable()
@@ -16,6 +17,7 @@ export class AuthService {
         private readonly usersService: UsersService,
         private readonly jwtService: JwtService,
         private readonly config: ConfigService,
+        private readonly blacklistService: TokenBlacklistService,
         @InjectRepository(Session)
         private readonly sessionRepo: Repository<Session>
     ) {}
@@ -61,13 +63,17 @@ export class AuthService {
 
     async logout(sid: string) {
         await this.sessionRepo.delete({ id: sid });
+        await this.blacklistService.revokeSession(sid);
     }
 
-    async logoutAll(userId: number, currentSessionId?: string) {
-        await this.sessionRepo.delete({
+    async logoutAll(userId: number, exceptSessionId?: string) {
+        const where = {
             userId,
-            ...(currentSessionId && { id: Not(currentSessionId) })
-        });
+            ...(exceptSessionId && { id: Not(exceptSessionId) })
+        };
+        const sessions = await this.sessionRepo.find({ where, select: { id: true } });
+        await this.sessionRepo.delete(where);
+        await Promise.all(sessions.map((session) => this.blacklistService.revokeSession(session.id)));
     }
 
     private async issueTokens(user: User, currentSession?: Session) {

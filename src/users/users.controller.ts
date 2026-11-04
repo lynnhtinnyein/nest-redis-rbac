@@ -108,6 +108,7 @@ export class UsersController {
     async suspend(@Param("id", ParseIntPipe) id: number, @CurrentUser() authUser: AuthUser) {
         if (id === authUser.id) throw new ForbiddenException("You cannot suspend your own account");
         await this.usersService.toggleAccountSuspension(id, authUser, { suspending: true });
+        await this.authService.logoutAll(id);
         return { id: id, message: "User suspended successfully." };
     }
 
@@ -116,7 +117,6 @@ export class UsersController {
     async restore(@Param("id", ParseIntPipe) id: number, @CurrentUser() authUser: AuthUser) {
         if (id === authUser.id) throw new ForbiddenException("You cannot restore your own account");
         await this.usersService.toggleAccountSuspension(id, authUser, { suspending: false });
-        await this.authService.logoutAll(id);
         return { id: id, message: "User access restored successfully." };
     }
 

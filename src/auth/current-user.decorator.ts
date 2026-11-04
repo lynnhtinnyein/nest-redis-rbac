@@ -8,7 +8,6 @@ export interface AuthUserData {
     sid: string;
     role: Role;
     permissions: Permission[];
-    isSuspended: boolean;
 }
 
 export class AuthUser extends Authorizable {
@@ -16,7 +15,6 @@ export class AuthUser extends Authorizable {
     readonly sid: string;
     readonly role: Role;
     readonly permissions: Permission[];
-    readonly isSuspended: boolean;
 
     constructor(data: AuthUserData) {
         super();
@@ -24,7 +22,6 @@ export class AuthUser extends Authorizable {
         this.sid = data.sid;
         this.role = data.role;
         this.permissions = data.permissions;
-        this.isSuspended = data.isSuspended;
     }
 }
 

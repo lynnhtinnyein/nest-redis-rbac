@@ -4,7 +4,6 @@ import { Role } from "./role.enum.js";
 export abstract class Authorizable {
     abstract id: number;
     abstract role: Role;
-    abstract isSuspended: boolean;
     abstract permissions: { value: string }[];
 
     canManage(target: Role | { role: Role }) {
@@ -23,7 +22,6 @@ export abstract class Authorizable {
     }
 
     hasPermission(value: string) {
-        if (this.isSuspended) return false;
         return this.permissions?.some((p) => p.value === value) ?? false;
     }
 
