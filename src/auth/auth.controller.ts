@@ -8,13 +8,14 @@ import {
     UseGuards
 } from "@nestjs/common";
 import { AuthService } from "./auth.service.js";
-import { type AuthUser, CurrentUser } from "./current-user.decorator.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { RefreshDto } from "./dto/refresh.dto.js";
 import { JwtAuthGuard } from "./jwt/jwt-auth.guard.js";
 import { UserResource } from "../users/user.resource.js";
 import { UsersService } from "../users/users.service.js";
 import { ApiBearerAuth } from "@nestjs/swagger";
+import { type AuthUser, CurrentUser } from "./current-user.decorator.js";
+import { LoginThrottleGuard } from "./login-throttle.guard.js";
 
 @Controller("auth")
 export class AuthController {
@@ -23,6 +24,7 @@ export class AuthController {
         private readonly usersService: UsersService
     ) {}
 
+    @UseGuards(LoginThrottleGuard)
     @Post("login")
     @HttpCode(200)
     async login(@Body() dto: LoginDto) {

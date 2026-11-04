@@ -2,6 +2,7 @@ import {
     Body,
     Controller,
     Delete,
+    ForbiddenException,
     Get,
     NotFoundException,
     Param,
@@ -89,39 +90,46 @@ export class UsersController {
     ) {
         await this.usersService.updatePassword(id, dto.password);
 
-        if (dto.logoutAllDevices) {
-            await this.authService.logoutAll(id, id === authUser.id ? authUser.sid : undefined);
+        if (dto.logoutAll) {
+            const currentSessionId = authUser.sid;
+            await this.authService.logoutAll(id, currentSessionId);
         }
 
         return {
-            message: dto.logoutAllDevices
+            id: id,
+            message: dto.logoutAll
                 ? "Password updated successfully. You have been logged out of all devices."
                 : "Password updated successfully."
         };
+    }
+
+    @Patch(":id/suspend")
+    @RequirePermission("users.manage")
+    async suspend(@Param("id", ParseIntPipe) id: number, @CurrentUser() authUser: AuthUser) {
+        if (id === authUser.id) throw new ForbiddenException("You cannot suspend your own account");
+        await this.usersService.toggleAccountSuspension(id, authUser, { suspending: true });
+        return { id: id, message: "User suspended successfully." };
+    }
+
+    @Patch(":id/restore")
+    @RequirePermission("users.manage")
+    async restore(@Param("id", ParseIntPipe) id: number, @CurrentUser() authUser: AuthUser) {
+        if (id === authUser.id) throw new ForbiddenException("You cannot restore your own account");
+        await this.usersService.toggleAccountSuspension(id, authUser, { suspending: false });
+        await this.authService.logoutAll(id);
+        return { id: id, message: "User access restored successfully." };
     }
 
     @Delete(":id")
     @RequirePermission("users.manage")
     async destroy(@Param("id", ParseIntPipe) id: number, @CurrentUser() authUser: AuthUser) {
         await this.usersService.safeDelete(id, authUser);
-        return { message: "User deleted successfully" };
+        return { id: id, message: "User deleted successfully." };
     }
 
     // @Patch(":id/restore-from-trash")
     // @RequirePermission("users.manage")
     // restoreFromTrash(@Param("id") id: string, @CurrentUser() authUser: AuthUser) {
     //     return this.usersService.restoreFromTrash(id, user.id);
-    // }
-
-    // @Patch(":id/suspend")
-    // @RequirePermission("users.manage")
-    // suspend(@Param("id") id: string, @CurrentUser() authUser: AuthUser) {
-    //     return this.usersService.suspend(id, user.id);
-    // }
-
-    // @Patch(":id/restore")
-    // @RequirePermission("users.manage")
-    // restore(@Param("id") id: string, @CurrentUser() authUser: AuthUser) {
-    //     return this.usersService.restore(id, user.id);
     // }
 }

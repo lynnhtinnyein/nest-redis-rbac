@@ -20,6 +20,6 @@ export class UpdatePasswordDto {
         description: "Revoke all sessions on other devices"
     })
     @IsOptional()
-    @IsBoolean({ message: "invalid logoutAllDevices" })
-    logoutAllDevices?: boolean;
+    @IsBoolean({ message: "invalid logoutAll" })
+    logoutAll?: boolean;
 }

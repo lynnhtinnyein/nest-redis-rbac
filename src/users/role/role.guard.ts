@@ -38,7 +38,7 @@ export class RoleGuard implements CanActivate {
             return true;
         }
 
-        const target = await this.usersService.findById(targetId, { withTrash: true });
+        const target = await this.usersService.findById(targetId, { withDeleted: true });
 
         if (!target) throw new NotFoundException("User not found");
 

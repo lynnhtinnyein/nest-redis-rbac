@@ -2,7 +2,7 @@ import { ObjectLiteral, QueryFailedError, Repository } from "typeorm";
 
 const FK_VIOLATION_ERRNOS = [1451, 1217];
 
-export async function safeDelete<T extends ObjectLiteral>(
+export async function deleteOrArchive<T extends ObjectLiteral>(
     repo: Repository<T>,
     id: number
 ): Promise<"archived" | "deleted"> {

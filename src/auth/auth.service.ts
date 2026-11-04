@@ -63,10 +63,10 @@ export class AuthService {
         await this.sessionRepo.delete({ id: sid });
     }
 
-    async logoutAll(userId: number, sid?: string) {
+    async logoutAll(userId: number, currentSessionId?: string) {
         await this.sessionRepo.delete({
             userId,
-            ...(sid && { id: Not(sid) })
+            ...(currentSessionId && { id: Not(currentSessionId) })
         });
     }
 

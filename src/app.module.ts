@@ -6,6 +6,7 @@ import { AppService } from "./app.service.js";
 import { UsersModule } from "./users/users.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { PermissionsModule } from "./permissions/permissions.module.js";
+import { RedisModule } from "./redis/redis.module.js";
 
 @Module({
     imports: [
@@ -20,10 +21,11 @@ import { PermissionsModule } from "./permissions/permissions.module.js";
                 password: config.get("DB_PASS"),
                 database: config.get("DB_NAME"),
                 autoLoadEntities: true,
-                synchronize: true,
+                synchronize: true
                 // dropSchema: true // migrate:fresh
             })
         }),
+        RedisModule,
         UsersModule,
         AuthModule,
         PermissionsModule

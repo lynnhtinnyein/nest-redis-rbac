@@ -6,7 +6,7 @@ import {
     NotFoundException
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Brackets, EntityManager, FindOneOptions, In, Repository } from "typeorm";
+import { Brackets, EntityManager, FindOneOptions, In, IsNull, Repository } from "typeorm";
 import { buildFindOneOptions } from "../common/relation-options.js";
 import { Permission } from "../permissions/permission.entity.js";
 import { User } from "./user.entity.js";
@@ -16,10 +16,10 @@ import { UpdateUserDto } from "./dto/update-user-dto.js";
 import { ListUserDto } from "./dto/index-user.dto.js";
 import { AuthUser } from "../auth/current-user.decorator.js";
 import { emptyPage, paginate } from "../common/orm/paginate.js";
-import { safeDelete } from "../common/utils/safe-delete.js";
+import { deleteOrArchive } from "../common/utils/delete-or-archive.js";
 import bcrypt from "bcrypt";
 
-type FindOptions = { withRelations?: boolean; withTrash?: boolean };
+type FindOptions = { withRelations?: boolean; withDeleted?: boolean };
 
 @Injectable()
 export class UsersService {
@@ -30,34 +30,34 @@ export class UsersService {
         @InjectRepository(Permission)
         private readonly permissionRepo: Repository<Permission>
     ) {
-        this.relations = buildFindOneOptions(this.repo, [
-            "permissions:value",
-            "toggledBy:id,name",
-            "createdBy:id,name"
-        ]);
+        this.relations = buildFindOneOptions(this.repo, {
+            permissions: { select: "*" },
+            toggledBy: { withDeleted: true, select: ["id", "name"] },
+            createdBy: { withDeleted: true, select: ["id", "name"] }
+        });
     }
 
     findByEmail(
         email: string,
-        { withRelations = false, withTrash = false }: FindOptions = {},
+        { withRelations = false, withDeleted = false }: FindOptions = {},
         repo: EntityManager = this.repo.manager
     ) {
         return repo.findOne(User, {
-            where: { email },
-            withDeleted: withTrash,
-            ...(withRelations ? this.relations : {})
+            ...(withRelations && this.relations),
+            ...(withDeleted && { withDeleted }),
+            where: { email, ...(withDeleted ? {} : { deletedAt: IsNull() }) }
         });
     }
 
     findById(
         id: number,
-        { withRelations = false, withTrash = false }: FindOptions = {},
+        { withRelations = false, withDeleted = false }: FindOptions = {},
         repo: EntityManager = this.repo.manager
     ) {
         return repo.findOne(User, {
-            where: { id },
-            withDeleted: withTrash,
-            ...(withRelations ? this.relations : {})
+            ...(withRelations && this.relations),
+            ...(withDeleted && { withDeleted }),
+            where: { id, ...(withDeleted ? {} : { deletedAt: IsNull() }) }
         });
     }
 
@@ -197,16 +197,44 @@ export class UsersService {
     }
 
     async safeDelete(id: number, authUser: AuthUser) {
-        const user = await this.findById(id, { withTrash: true });
-        const isOwnAccount = authUser.id === id;
-
+        const user = await this.findById(id, { withDeleted: true });
         if (!user) throw new NotFoundException("User not found");
 
+        const isOwnAccount = authUser.id === id;
         if (!isOwnAccount && !authUser.canManage(user.role)) {
             throw new ForbiddenException("you do not have permission to perform this action");
         }
 
-        return safeDelete(this.repo, id);
+        if (user.deletedAt) return;
+
+        const deleteResult = await deleteOrArchive(this.repo, id);
+
+        if (deleteResult === "archived") {
+            await this.repo.update(id, {
+                email: `deleted_${id}_${user.email}`
+            });
+        }
+    }
+
+    async toggleAccountSuspension(
+        id: number,
+        authUser: AuthUser,
+        { suspending = false }: { suspending: boolean }
+    ) {
+        const user = await this.findById(id);
+        if (!user) throw new NotFoundException("User not found");
+
+        if (!authUser.canManage(user.role)) {
+            throw new ForbiddenException("you do not have permission to perform this action");
+        }
+
+        if (user.isSuspended === suspending) return;
+
+        await this.repo.update(id, {
+            isSuspended: suspending,
+            toggledById: authUser.id,
+            toggledAt: new Date()
+        });
     }
 
     private async resolvePermissions(ids: number[], role: Role) {
