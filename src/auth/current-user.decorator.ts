@@ -1,5 +1,4 @@
 import { createParamDecorator, type ExecutionContext } from "@nestjs/common";
-import type { Permission } from "../permissions/permission.entity.js";
 import { Authorizable } from "../users/role/authorizable.js";
 import type { Role } from "../users/role/role.enum.js";
 
@@ -7,14 +6,14 @@ export interface AuthUserData {
     id: number;
     sid: string;
     role: Role;
-    permissions: Permission[];
+    permissions: string[];
 }
 
 export class AuthUser extends Authorizable {
     readonly id: number;
     readonly sid: string;
     readonly role: Role;
-    readonly permissions: Permission[];
+    readonly permissions: string[];
 
     constructor(data: AuthUserData) {
         super();

@@ -1,10 +1,17 @@
+import { Permission } from "../../permissions/permission.entity.js";
 import { roleLevel } from "./role-policy.js";
 import { Role } from "./role.enum.js";
 
 export abstract class Authorizable {
     abstract id: number;
     abstract role: Role;
-    abstract permissions: { value: string }[];
+    abstract permissions: Permission[] | string[];
+
+    get permissionValues(): string[] {
+        return this.permissions.map((permission) =>
+            typeof permission === "string" ? permission : permission.value
+        );
+    }
 
     canManage(target: Role | { role: Role }) {
         const role = typeof target === "string" ? target : target.role;
@@ -22,7 +29,7 @@ export abstract class Authorizable {
     }
 
     hasPermission(value: string) {
-        return this.permissions?.some((p) => p.value === value) ?? false;
+        return this.permissionValues.includes(value);
     }
 
     getAccessibleRoles(): Role[] {
