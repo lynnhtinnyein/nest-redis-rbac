@@ -28,6 +28,13 @@ export class AuthService {
         if (!user || !valid) {
             throw new UnauthorizedException("Invalid credentials");
         }
+
+        if (user.isSuspended) {
+            throw new UnauthorizedException(
+                "Your account has been suspended. Please contact support."
+            );
+        }
+        
         const tokens = await this.issueTokens(user);
 
         return {
@@ -73,7 +80,9 @@ export class AuthService {
         };
         const sessions = await this.sessionRepo.find({ where, select: { id: true } });
         await this.sessionRepo.delete(where);
-        await Promise.all(sessions.map((session) => this.blacklistService.revokeSession(session.id)));
+        await Promise.all(
+            sessions.map((session) => this.blacklistService.revokeSession(session.id))
+        );
     }
 
     private async issueTokens(user: User, currentSession?: Session) {
