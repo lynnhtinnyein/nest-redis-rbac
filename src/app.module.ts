@@ -7,7 +7,6 @@ import { UsersModule } from "./users/users.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { PermissionsModule } from "./permissions/permissions.module.js";
 import { RedisModule } from "./redis/redis.module.js";
-import { JwtAuthModule } from "./auth/jwt/jwt-auth.module.js";
 
 @Module({
     imports: [
@@ -26,7 +25,6 @@ import { JwtAuthModule } from "./auth/jwt/jwt-auth.module.js";
                 // dropSchema: true // migrate:fresh
             })
         }),
-        JwtAuthModule,
         RedisModule,
         UsersModule,
         AuthModule,

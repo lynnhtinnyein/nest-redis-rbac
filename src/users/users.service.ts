@@ -132,7 +132,7 @@ export class UsersService {
             throw new ForbiddenException("Access denied");
         }
 
-        if (await this.repo.findOne({ where: { email: dto.email } })) {
+        if (await this.findByEmail(dto.email)) {
             throw new ConflictException("email is already registered");
         }
 
