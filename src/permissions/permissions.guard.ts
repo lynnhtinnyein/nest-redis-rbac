@@ -45,6 +45,6 @@ export class PermissionsGuard implements CanActivate {
             return true;
         }
 
-        throw new ForbiddenException("you do not have permission to perform this action");
+        throw new ForbiddenException("Access denied");
     }
 }

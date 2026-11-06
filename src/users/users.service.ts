@@ -113,7 +113,7 @@ export class UsersService {
                 "permissionsCount"
             ).orderBy("permissionsCount", dto.sortOrder);
         } else {
-            qb.orderBy(`user.${dto.sortBy}`, dto.sortOrder);
+            qb.orderBy(`user.${sortBy}`, dto.sortOrder);
         }
 
         qb.addOrderBy("user.id", "ASC");
@@ -129,7 +129,7 @@ export class UsersService {
     async create(dto: CreateUserDto, authUser: AuthUser) {
         const role = dto.role ?? Role.USER;
         if (!authUser.canCreate(role)) {
-            throw new ForbiddenException("you do not have permission to perform this action");
+            throw new ForbiddenException("Access denied");
         }
 
         if (await this.repo.findOne({ where: { email: dto.email } })) {
@@ -168,12 +168,12 @@ export class UsersService {
         if (!user) throw new NotFoundException("User not found");
 
         if (!authUser.canManage(user.role)) {
-            throw new ForbiddenException("you do not have permission to perform this action");
+            throw new ForbiddenException("Access denied");
         }
 
         const role = dto.role ?? user.role;
         if (role !== user.role && !authUser.canCreate(role)) {
-            throw new ForbiddenException("you do not have permission to perform this action");
+            throw new ForbiddenException("Access denied");
         }
 
         if (dto.name !== undefined) user.name = dto.name;
@@ -202,7 +202,7 @@ export class UsersService {
 
         const isOwnAccount = authUser.id === id;
         if (!isOwnAccount && !authUser.canManage(user.role)) {
-            throw new ForbiddenException("you do not have permission to perform this action");
+            throw new ForbiddenException("Access denied");
         }
 
         if (user.deletedAt) return;
@@ -225,7 +225,7 @@ export class UsersService {
         if (!user) throw new NotFoundException("User not found");
 
         if (!authUser.canManage(user.role)) {
-            throw new ForbiddenException("you do not have permission to perform this action");
+            throw new ForbiddenException("Access denied");
         }
 
         if (user.isSuspended === suspending) return;

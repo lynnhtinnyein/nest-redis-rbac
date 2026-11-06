@@ -43,7 +43,7 @@ export class RoleGuard implements CanActivate {
         if (!target) throw new NotFoundException("User not found");
 
         if (!authUser.canAccess(target)) {
-            throw new ForbiddenException("You cannot access this account.");
+            throw new ForbiddenException("Access denied");
         }
 
         request.targetUser = target;
