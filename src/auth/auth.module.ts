@@ -1,30 +1,24 @@
 import { Module } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { JwtModule } from "@nestjs/jwt";
-import { PassportModule } from "@nestjs/passport";
+import { APP_GUARD } from "@nestjs/core";
+import { TypeOrmModule } from "@nestjs/typeorm";
 import { UsersModule } from "../users/users.module.js";
+import { UsersController } from "../users/users.controller.js";
 import { AuthController } from "./auth.controller.js";
 import { AuthService } from "./auth.service.js";
 import { JwtStrategy } from "./jwt/jwt.strategy.js";
-import { TypeOrmModule } from "@nestjs/typeorm";
+
 import { Session } from "./session.entity.js";
-import { UsersController } from "../users/users.controller.js";
 import { TokenBlacklistService } from "./token-blacklist.service.js";
+import { JwtAuthGuard } from "./jwt/jwt-auth.guard.js";
 
 @Module({
-    imports: [
-        UsersModule,
-        PassportModule,
-        TypeOrmModule.forFeature([Session]),
-        JwtModule.registerAsync({
-            inject: [ConfigService],
-            useFactory: (config: ConfigService) => ({
-                secret: config.get<string>("JWT_SECRET"),
-                signOptions: { expiresIn: Number(config.get("JWT_EXPIRES_IN")) }
-            })
-        })
-    ],
-    controllers: [AuthController, UsersController], //TODO:
-    providers: [AuthService, JwtStrategy, TokenBlacklistService]
+    imports: [UsersModule, TypeOrmModule.forFeature([Session])],
+    controllers: [AuthController, UsersController],
+    providers: [
+        AuthService,
+        JwtStrategy,
+        TokenBlacklistService,
+        { provide: APP_GUARD, useClass: JwtAuthGuard }
+    ]
 })
 export class AuthModule {}
