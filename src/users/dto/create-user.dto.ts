@@ -14,6 +14,8 @@ import {
 } from "class-validator";
 import { Match } from "../../common/match.decorator.js";
 import { Role } from "../role/role.enum.js";
+import { ExistsIn } from "../../common/exists-in.decorator.js";
+import { Permission } from "../../permissions/permission.entity.js";
 
 export class CreateUserDto {
     @ApiProperty({ example: "John Doe", maxLength: 255 })
@@ -48,5 +50,6 @@ export class CreateUserDto {
     @ArrayMinSize(1, { message: "at least one permission is required" })
     @ArrayUnique({ message: "permissionIds must be unique" })
     @IsInt({ each: true, message: "each permission id must be an integer" })
+    @ExistsIn(Permission)
     permissionIds: number[];
 }

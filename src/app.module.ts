@@ -7,6 +7,7 @@ import { UsersModule } from "./users/users.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { PermissionsModule } from "./permissions/permissions.module.js";
 import { RedisModule } from "./redis/redis.module.js";
+import { ExistsInConstraint } from "./common/exists-in.decorator.js";
 
 @Module({
     imports: [
@@ -31,6 +32,6 @@ import { RedisModule } from "./redis/redis.module.js";
         PermissionsModule
     ],
     controllers: [AppController],
-    providers: [AppService]
+    providers: [AppService, ExistsInConstraint]
 })
 export class AppModule {}
