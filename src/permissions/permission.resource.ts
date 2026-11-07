@@ -9,7 +9,7 @@ export class PermissionResource {
             description: permission.description,
             isHidden: permission.isHidden,
             riskLevel: permission.riskLevel,
-            accessibleRoles: permission.accessibleRoles
+            assignableRoles: permission.assignableRoles
         };
     }
 

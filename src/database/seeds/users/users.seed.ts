@@ -10,8 +10,8 @@ export async function seedUsers(dataSource: DataSource, config: ConfigService) {
     const repo = dataSource.getRepository(User);
     const permissions = await dataSource.getRepository(Permission).find();
     const adminPermissions = permissions.filter((permission) => {
-        const accessibleRoles = permission?.accessibleRoles || [];
-        return accessibleRoles.includes(Role.ADMIN);
+        const assignableRoles = permission?.assignableRoles || [];
+        return assignableRoles.includes(Role.ADMIN);
     });
 
     const superAdmin = await repo.save(

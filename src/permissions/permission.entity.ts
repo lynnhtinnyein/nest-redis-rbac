@@ -26,7 +26,7 @@ export class Permission {
     isAdminDefault: boolean;
 
     @Column({ type: "json", nullable: true })
-    accessibleRoles: Role[] | null;
+    assignableRoles: Role[] | null;
 
     @Column({ default: false })
     isHidden: boolean;

@@ -12,7 +12,7 @@ type PermissionSeed = Pick<
     | "isHidden"
     | "riskLevel"
     | "isAdminDefault"
-    | "accessibleRoles"
+    | "assignableRoles"
 >;
 
 export const permissions: PermissionSeed[] = [
@@ -23,7 +23,7 @@ export const permissions: PermissionSeed[] = [
         isHidden: true,
         riskLevel: 1,
         isAdminDefault: false,
-        accessibleRoles: ALL
+        assignableRoles: ALL
     },
     {
         value: "menu.create",
@@ -32,7 +32,7 @@ export const permissions: PermissionSeed[] = [
         isHidden: false,
         riskLevel: 1,
         isAdminDefault: false,
-        accessibleRoles: ALL
+        assignableRoles: ALL
     },
     {
         value: "menu.manage",
@@ -41,7 +41,7 @@ export const permissions: PermissionSeed[] = [
         isHidden: false,
         riskLevel: 3,
         isAdminDefault: false,
-        accessibleRoles: ADMINS
+        assignableRoles: ADMINS
     },
     {
         value: "orders.view",
@@ -50,7 +50,7 @@ export const permissions: PermissionSeed[] = [
         isHidden: true,
         riskLevel: 1,
         isAdminDefault: false,
-        accessibleRoles: ALL
+        assignableRoles: ALL
     },
     {
         value: "orders.create",
@@ -59,7 +59,7 @@ export const permissions: PermissionSeed[] = [
         isHidden: false,
         riskLevel: 1,
         isAdminDefault: false,
-        accessibleRoles: ALL
+        assignableRoles: ALL
     },
     {
         value: "orders.cancel",
@@ -68,7 +68,7 @@ export const permissions: PermissionSeed[] = [
         isHidden: false,
         riskLevel: 2,
         isAdminDefault: false,
-        accessibleRoles: ADMINS
+        assignableRoles: ADMINS
     },
     {
         value: "payments.view",
@@ -77,7 +77,7 @@ export const permissions: PermissionSeed[] = [
         isHidden: true,
         riskLevel: 2,
         isAdminDefault: false,
-        accessibleRoles: ALL
+        assignableRoles: ALL
     },
     {
         value: "payments.process",
@@ -86,7 +86,7 @@ export const permissions: PermissionSeed[] = [
         isHidden: false,
         riskLevel: 2,
         isAdminDefault: false,
-        accessibleRoles: ALL
+        assignableRoles: ALL
     },
     {
         value: "payments.refund",
@@ -95,7 +95,7 @@ export const permissions: PermissionSeed[] = [
         isHidden: false,
         riskLevel: 3,
         isAdminDefault: false,
-        accessibleRoles: ADMINS
+        assignableRoles: ADMINS
     },
     {
         value: "inventory.manage",
@@ -104,7 +104,7 @@ export const permissions: PermissionSeed[] = [
         isHidden: false,
         riskLevel: 3,
         isAdminDefault: false,
-        accessibleRoles: ADMINS
+        assignableRoles: ADMINS
     },
     {
         value: "reports.view_sales",
@@ -113,7 +113,7 @@ export const permissions: PermissionSeed[] = [
         isHidden: false,
         riskLevel: 2,
         isAdminDefault: false,
-        accessibleRoles: ADMINS
+        assignableRoles: ADMINS
     },
     {
         value: "users.view",
@@ -122,7 +122,7 @@ export const permissions: PermissionSeed[] = [
         isHidden: true,
         riskLevel: 3,
         isAdminDefault: true,
-        accessibleRoles: ADMINS
+        assignableRoles: ADMINS
     },
     {
         value: "users.manage",
@@ -131,7 +131,7 @@ export const permissions: PermissionSeed[] = [
         isHidden: false,
         riskLevel: 3,
         isAdminDefault: true,
-        accessibleRoles: ADMINS
+        assignableRoles: ADMINS
     }
 ];
 

@@ -252,7 +252,7 @@ export class UsersService {
 
         const selected = new Set(permissions.map((permission) => permission.id));
         for (const permission of permissions) {
-            if (permission.accessibleRoles && !permission.accessibleRoles.includes(role)) {
+            if (permission.assignableRoles && !permission.assignableRoles.includes(role)) {
                 throw new BadRequestException(
                     `permission ${permission.value} is not available for role ${role}`
                 );
