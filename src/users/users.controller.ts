@@ -29,14 +29,13 @@ import { ListUserDto } from "./dto/index-user.dto.js";
 
 @ApiBearerAuth()
 @Controller("users")
-@UseGuards(JwtAuthGuard, PermissionsGuard, RoleGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class UsersController {
     constructor(
         private readonly authService: AuthService,
         private readonly usersService: UsersService
     ) {}
 
-    // users.view
     @Get()
     @RequirePermission("users.view")
     async index(@Query() query: ListUserDto, @CurrentUser() authUser: AuthUser) {
@@ -52,6 +51,7 @@ export class UsersController {
     }
 
     @Get(":id")
+    @UseGuards(RoleGuard)
     @RequirePermission("users.view")
     async show(@Param("id", ParseIntPipe) id: number) {
         const user = await this.usersService.findById(id, { withRelations: true });
@@ -59,7 +59,6 @@ export class UsersController {
         return UserResource.create(user);
     }
 
-    // users.manage
     @Post()
     @RequirePermission("users.manage")
     @ApiOperation({ summary: "Create user" })
@@ -70,6 +69,7 @@ export class UsersController {
     }
 
     @Put(":id")
+    @UseGuards(RoleGuard)
     @RequirePermission("users.manage")
     async update(
         @Param("id", ParseIntPipe) id: number,
@@ -82,6 +82,7 @@ export class UsersController {
     }
 
     @Patch(":id/update-password")
+    @UseGuards(RoleGuard)
     @RequirePermission("users.manage")
     async updatePassword(
         @Param("id", ParseIntPipe) id: number,
@@ -104,6 +105,7 @@ export class UsersController {
     }
 
     @Patch(":id/suspend")
+    @UseGuards(RoleGuard)
     @RequirePermission("users.manage")
     async suspend(@Param("id", ParseIntPipe) id: number, @CurrentUser() authUser: AuthUser) {
         if (id === authUser.id) throw new ForbiddenException("You cannot suspend your own account");
@@ -113,6 +115,7 @@ export class UsersController {
     }
 
     @Patch(":id/restore")
+    @UseGuards(RoleGuard)
     @RequirePermission("users.manage")
     async restore(@Param("id", ParseIntPipe) id: number, @CurrentUser() authUser: AuthUser) {
         if (id === authUser.id) throw new ForbiddenException("You cannot restore your own account");
@@ -121,15 +124,10 @@ export class UsersController {
     }
 
     @Delete(":id")
+    @UseGuards(RoleGuard)
     @RequirePermission("users.manage")
     async destroy(@Param("id", ParseIntPipe) id: number, @CurrentUser() authUser: AuthUser) {
         await this.usersService.safeDelete(id, authUser);
         return { id: id, message: "User deleted successfully." };
     }
-
-    // @Patch(":id/restore-from-trash")
-    // @RequirePermission("users.manage")
-    // restoreFromTrash(@Param("id") id: string, @CurrentUser() authUser: AuthUser) {
-    //     return this.usersService.restoreFromTrash(id, user.id);
-    // }
 }
