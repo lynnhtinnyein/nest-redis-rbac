@@ -1,7 +1,7 @@
 import type { Permission } from "./permission.entity.js";
 
 export class PermissionResource {
-    static make(permission: Permission) {
+    static create(permission: Permission) {
         return {
             id: permission.id,
             value: permission.value,
@@ -14,6 +14,6 @@ export class PermissionResource {
     }
 
     static collection(permissions: Permission[]) {
-        return permissions.map((permission) => PermissionResource.make(permission));
+        return permissions.map((permission) => PermissionResource.create(permission));
     }
 }
